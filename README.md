@@ -90,7 +90,7 @@ With a trained model, you can generate sketches with sketch images input as cond
 
 `num_per_category` denotes the number of generated sketches per category, and the generated sketches with their corresponding latent codes and Gaussian component indexes are stored in `output_path`. 
 
-## Evaluation
+## Evaluating
 ```
 python retrieval.py --model_dir=checkpoint_path --sample_dir=output_path
 ```
