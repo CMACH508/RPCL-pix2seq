@@ -8,15 +8,15 @@ This repo contains the TensorFlow code for `RPCL-pix2seq`, and more information 
 
 RPCL-pix2seq is a generative model for stroke-based free-hand sketch in a hierarchical structure under the Variational Auto-Encoder (VAE) framework. The bottom layer contains a CNN encoder for feature extraction, an RNN decoder (directly adopted from [sketch-rnn](https://github.com/magenta/magenta/tree/master/magenta/models/sketch_rnn)) for sketch synthesis and an CNN decoder as a regularization. And the top layer is a rival penalized EM-like algorithm for learning a GMM-structured latent space. 
 
-<img src="https://github.com/SCZang/RPCL-pix2seq/blob/master/assets/RPCL-pix2seq.png" width="650" alt="overview"/>
+<img src="https://github.com/CMACH508/RPCL-pix2seq/blob/master/assets/RPCL-pix2seq.png" width="650" alt="overview"/>
 
 During training, RPCL-pix2seq firstly extracts a latent code `batch_z` (with a dimension of `z_size`) for the fed sketch image. Based on the latent code, the top layer estimates and then updates the GMM parameters (`de_alpha`, `de_mu`, `de_sigma2` in `model.py`) of the latent space. Then the code is respectively sent into the two-branches decoders, generating a series of pen strokes as the sequence-formed sketch and a pixel-formed image reconstruction. The pixel-formed image reconstruction from the CNN decoder works as a regularization, encouraging the encoder to preserve more features from the fed sketch image to the latent code.
 
-<img src="https://github.com/SCZang/RPCL-pix2seq/blob/master/assets/latent_space.jpg" width="650" alt="latent_space"/>
+<img src="https://github.com/CMACH508/RPCL-pix2seq/blob/master/assets/latent_space.jpg" width="650" alt="latent_space"/>
 
 Sketches with different categorical and stylistic patterns are automatically partitioned into clusters in the latent space. When the GMM latent space is initialized with 10 Gaussians, RPCL-pix2seq is able to unsupervisedly self-organize a GMM space with 7 Gaussian components, according to the training dataset. The redundant 3 Gaussians (Gaussian #6, #8, #9 in the figure above) are automatically kicked out by RPCL-pixseq itself during training. With an appropriate number of Guassian components left, the latent space is smooth enough to do synthesis reasoning (such as interpolation in below) generating novel but reasonable sketches which neither appear in the training dataset nor exist in real life.
 
-<img src="https://github.com/SCZang/RPCL-pix2seq/blob/master/assets/interpolation_2d.png" width="500" alt="interpolation"/>
+<img src="https://github.com/CMACH508/RPCL-pix2seq/blob/master/assets/interpolation_2d.png" width="500" alt="interpolation"/>
 
 # Training an RPCL-pix2seq
 
@@ -97,7 +97,7 @@ python retrieval.py --model_dir=checkpoint_path --sample_dir=output_path
 
 The metrics **Rec** and **Ret** can evaluate whether the generated sketches are categorically and stylistically controllable. You need to train a [Sketch_a_net](https://arxiv.org/pdf/1501.07873.pdf) with the same training set as for RPCL-pix2seq, to calculate **Rec**. And you can use `retrieval.py` to get **Ret**. 
 
-<img src="https://github.com/SCZang/RPCL-pix2seq/blob/master/assets/criteria.png" width="650" alt="criteria"/>
+<img src="https://github.com/CMACH508/RPCL-pix2seq/blob/master/assets/criteria.png" width="650" alt="criteria"/>
 
 * Please make sure the generated sketches for evaluation are *black-and-white*, and both metrics are calculated with the entire test set (i.e., --num_per_category=2500).
 
