@@ -77,7 +77,7 @@ num_sub=2,                         # Init number of components for each category
 num_per_category=70000             # Training samples from each category
 ```
 
-We also provide a pretrained RPCL-pix2seq model and you can get it from [linkA](https://jbox.sjtu.edu.cn/l/SFjd6L) or [linkB](https://1drv.ms/u/s!ArRhVHnSla1gs1b3HFGVpNf7vKOr?e=BUykFQ).
+We also provide a pretrained RPCL-pix2seq model and you can get it from [Link A](https://pan.baidu.com/s/1sZwntBPKVhzqSZLD0vvgAg?pwd=s72s) or [link B](https://jbox.sjtu.edu.cn/l/SFjd6L).
 
 *Tips: When dealing with a multi-categorized dataset, enlarging the learning rate \eta for latent GMM learning helps accelerate the model selection mechanism.*
 
