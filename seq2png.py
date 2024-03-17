@@ -18,7 +18,6 @@
 #
 """ convert sequence data to png file """
 import numpy as np
-from six.moves import xrange
 import six
 import svgwrite  # conda install -c omnia svgwrite=1.1.6
 import os
@@ -103,7 +102,7 @@ def draw_strokes(data, svg_filename='sample.svg', width=48, margin=1.5, color='b
     lift_pen = 1
     p = "M%s,%s " % (abs_x, abs_y)
     command = "m"
-    for i in xrange(len(data)):
+    for i in range(len(data)):
         if (lift_pen == 1):
             command = "m"
         elif (command != "l"):
