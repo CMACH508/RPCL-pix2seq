@@ -36,31 +36,33 @@ import scipy.misc
 from model import Model
 import utils
 import matplotlib.pyplot as plt
+from hparam import HParams
+
 plt.switch_backend('agg')
 
-tf.logging.set_verbosity(tf.logging.INFO)
+tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.INFO)
 
-FLAGS = tf.app.flags.FLAGS
+FLAGS = tf.compat.v1.app.flags.FLAGS
 
 # Dataset directory
-tf.app.flags.DEFINE_string(
+tf.compat.v1.app.flags.DEFINE_string(
     'data_dir',
     'dataset_path',
     'The directory in which to find the dataset specified in model hparams. '
     )
 
 # Checkpoint directory
-tf.app.flags.DEFINE_string(
+tf.compat.v1.app.flags.DEFINE_string(
     'log_root', 'checkpoint',
     'Directory to store model checkpoints, tensorboard.')
 
 # Resume training or not
-tf.app.flags.DEFINE_boolean(
+tf.compat.v1.app.flags.DEFINE_boolean(
     'resume_training', False,
     'Set to true to load previous checkpoint')
 
 # Model parameters (user defined)
-tf.app.flags.DEFINE_string(
+tf.compat.v1.app.flags.DEFINE_string(
     'hparams', '',
     'Pass in comma-separated key=value pairs such as '
     '\'save_every=40,decay_rate=0.99\' '
@@ -69,7 +71,7 @@ tf.app.flags.DEFINE_string(
 
 def get_default_hparams():
     """ Return default and initial HParams """
-    hparams = tf.contrib.training.HParams(
+    hparams = HParams(
         categories=['bee', 'bus', 'flower', 'giraffe', 'pig'],  # Sketch categories
         num_steps=1000001,  # Number of total steps (the process will stop automatically if the loss is not improved)
         save_every=1,  # Number of epochs before saving model
@@ -200,13 +202,7 @@ def _test(sess, eval_model, test_set):
 def prepare(model_params):
     """ Prepare data and model for training """
     raw_data = utils.load_data(FLAGS.data_dir, model_params.categories, model_params.num_per_category)
-    train_set, valid_set, test_set, max_seq_len = utils.preprocess_data(raw_data,
-                                                                        model_params.batch_size,
-                                                                        model_params.random_scale_factor,
-                                                                        model_params.augment_stroke_prob,
-                                                                        model_params.png_scale_ratio,
-                                                                        model_params.png_rotate_angle,
-                                                                        model_params.png_translate_dist)
+    train_set, valid_set, test_set, max_seq_len = utils.preprocess_data(raw_data,model_params.batch_size,model_params.random_scale_factor,model_params.augment_stroke_prob,model_params.png_scale_ratio,model_params.png_rotate_angle,model_params.png_translate_dist)
     model_params.max_seq_len = max_seq_len
 
     # Evaluating model params
@@ -222,8 +218,8 @@ def prepare(model_params):
     eval_model = Model(eval_model_params, reuse=True)
     
     # Create new session
-    sess = tf.InteractiveSession(config=tf.ConfigProto(gpu_options=tf.GPUOptions(allow_growth=True)))
-    sess.run(tf.global_variables_initializer())
+    sess = tf.compat.v1.InteractiveSession(config=tf.compat.v1.ConfigProto(gpu_options=tf.compat.v1.GPUOptions(allow_growth=True)))
+    sess.run(tf.compat.v1.global_variables_initializer())
     
     # Load checkpoint if resume training
     if FLAGS.resume_training:
@@ -234,8 +230,8 @@ def prepare(model_params):
         count = 0
 
     # Save model params to a json file
-    tf.gfile.MakeDirs(FLAGS.log_root)
-    with tf.gfile.Open(os.path.join(FLAGS.log_root, 'model_config.json'), 'w') as f:
+    tf.io.gfile.makedirs(FLAGS.log_root)
+    with tf.io.gfile.GFile(os.path.join(FLAGS.log_root, 'model_config.json'), 'w') as f:
         json.dump(model_params.values(), f, indent=True)
 
     return sess, train_model, eval_model, train_set, valid_set, test_set, best_valid_cost, epoch, count
@@ -243,7 +239,7 @@ def prepare(model_params):
 def load_checkpoint(sess, log_root):
     """ Load checkpoints"""
     utils.load_checkpoint(sess, log_root)
-    file = np.load(FLAGS.log_root + "/para.npz")
+    file = np.load(FLAGS.log_root + "/para.npz",encoding='latin1', allow_pickle=True)
     best_valid_cost = float(file['best_valid_loss'])
     epoch = int(file['epoch'])  # Last epoch during training
     count = int(file['count'])  # Previous accumulated steps for training
@@ -296,7 +292,7 @@ def main(unused_argv):
 
 
 def console_entry_point():
-    tf.app.run(main)
+    tf.compat.v1.app.run(main)
 
 
 if __name__ == '__main__':

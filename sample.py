@@ -55,7 +55,7 @@ def sample(sess, sample_model, z, gen_size=1, seq_len=250, temperature=0.24, gre
             accumulate += pdf[i]
             if accumulate >= x:
                 return i
-        tf.logging.info('Error with sampling ensemble.')
+        tf.compat.v1.logging.info('Error with sampling ensemble.')
         return -1
 
 
@@ -121,7 +121,7 @@ def sample(sess, sample_model, z, gen_size=1, seq_len=250, temperature=0.24, gre
 
 def load_model_params(model_dir):
     model_params = utils.get_default_hparams()
-    with tf.gfile.Open(os.path.join(model_dir, 'model_config.json'), 'r') as f:
+    with tf.io.gfile.GFile(os.path.join(model_dir, 'model_config.json'), 'r') as f:
         model_config = json.dumps(json.load(f))
         model_params.parse_json(model_config)
     return model_params
@@ -157,30 +157,30 @@ def sort_paths(paths):
     return paths
 
 def main():
-    FLAGS = tf.app.flags.FLAGS
+    FLAGS = tf.compat.v1.app.flags.FLAGS
     # Dataset directory
-    tf.app.flags.DEFINE_string(
+    tf.compat.v1.app.flags.DEFINE_string(
         'data_dir',
         'dataset_path',
         'The directory in which to find the dataset specified in model hparams. '
     )
     # Checkpoint directory
-    tf.app.flags.DEFINE_string(
+    tf.compat.v1.app.flags.DEFINE_string(
         'model_dir', 'checkpoint',
         'Directory to store the model checkpoints.'
     )
     # Output directory
-    tf.app.flags.DEFINE_string(
+    tf.compat.v1.app.flags.DEFINE_string(
         'output_dir', 'sample',
         'Directory to store the generated sketches.'
     )
     # Number of generated samples per category
-    tf.app.flags.DEFINE_integer(
+    tf.compat.v1.app.flags.DEFINE_integer(
         'num_per_category', 2500,
         'Number of generated samples per category.'
     )
     # Whether the sampling needs the sketch images input as references
-    tf.app.flags.DEFINE_boolean(
+    tf.compat.v1.app.flags.DEFINE_boolean(
         'conditional', True,
         'Whether the sampling is with conditions.'
     )
@@ -200,8 +200,8 @@ def main():
     model_params.batch_size = samples_per_category
     model = Model(model_params)
 
-    sess = tf.InteractiveSession(config=tf.ConfigProto(gpu_options=tf.GPUOptions(allow_growth=True)))
-    sess.run(tf.global_variables_initializer())
+    sess = tf.compat.v1.InteractiveSession(config=tf.compat.v1.ConfigProto(gpu_options=tf.compat.v1.GPUOptions(allow_growth=True)))
+    sess.run(tf.compat.v1.global_variables_initializer())
 
     utils.load_checkpoint(sess, model_dir)
     al, si = sess.run([model.de_alpha, model.de_sigma2])

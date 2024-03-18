@@ -28,10 +28,11 @@ import os
 import math
 import cv2
 import six
+from hparam import HParams
 
 def get_default_hparams():
     """ Return default and initial HParams """
-    hparams = tf.contrib.training.HParams(
+    hparams = HParams(
         categories=['bee', 'bus', 'flower', 'giraffe', 'pig'],  # Sketch categories
         num_steps=1000001,  # Number of total steps (the process will stop automatically if the loss is not improved)
         save_every=1,  # Number of epochs before saving model
@@ -66,15 +67,15 @@ def get_default_hparams():
 
 def copy_hparams(hparams):
   """ Return a copy of an HParams instance """
-  return tf.contrib.training.HParams(**hparams.values())
+  return HParams(**hparams.values())
 
 
 def reset_graph():
     """ Close the current default session and resets the graph """
-    sess = tf.get_default_session()
+    sess = tf.compat.v1.get_default_session()
     if sess:
       sess.close()
-    tf.reset_default_graph()
+    tf.compat.v1.reset_default_graph()
 
 def load_seqs(data_dir, categories):
     """ Load sequence raw data """
@@ -92,7 +93,7 @@ def load_seqs(data_dir, categories):
             seq_data = np.load(seq_path, encoding='latin1', allow_pickle=True)
         else:
             seq_data = np.load(seq_path, allow_pickle=True)
-        tf.logging.info('Loaded sequences {}/{}/{} from {}'.format(
+        tf.compat.v1.logging.info('Loaded sequences {}/{}/{} from {}'.format(
             len(seq_data['train']), len(seq_data['valid']), len(seq_data['test']),
             ctg + '.npz'))
 
@@ -131,7 +132,7 @@ def load_data(data_dir, categories, num_per_category):
             seq_data = np.load(seq_path, encoding='latin1', allow_pickle=True)
         else:
             seq_data = np.load(seq_path, allow_pickle=True)
-        tf.logging.info('Loaded sequences {}/{}/{} from {}'.format(
+        tf.compat.v1.logging.info('Loaded sequences {}/{}/{} from {}'.format(
             len(seq_data['train']), len(seq_data['valid']), len(seq_data['test']),
             ctg + '.npz'))
 
@@ -150,7 +151,7 @@ def load_data(data_dir, categories, num_per_category):
             png_data = np.load(png_path, encoding='latin1', allow_pickle=True)
         else:
             png_data = np.load(png_path, allow_pickle=True)
-        tf.logging.info('Loaded pngs {}/{}/{} from {}'.format(
+        tf.compat.v1.logging.info('Loaded pngs {}/{}/{} from {}'.format(
             len(png_data['train']), len(png_data['valid']), len(png_data['test']),
             ctg + '_png.npz'))
 
@@ -165,13 +166,13 @@ def load_data(data_dir, categories, num_per_category):
 
         # create labels
         if train_labels is None:
-            train_labels = i * np.ones([num_per_category], dtype=np.int)
-            valid_labels = i * np.ones([num_per_category], dtype=np.int)
-            test_labels = i * np.ones([num_per_category], dtype=np.int)
+            train_labels = i * np.ones([num_per_category], dtype=int)
+            valid_labels = i * np.ones([num_per_category], dtype=int)
+            test_labels = i * np.ones([num_per_category], dtype=int)
         else:
-            train_labels = np.concatenate([train_labels, i * np.ones([num_per_category], dtype=np.int)])
-            valid_labels = np.concatenate([valid_labels, i * np.ones([num_per_category], dtype=np.int)])
-            test_labels = np.concatenate([test_labels, i * np.ones([num_per_category], dtype=np.int)])
+            train_labels = np.concatenate([train_labels, i * np.ones([num_per_category], dtype=int)])
+            valid_labels = np.concatenate([valid_labels, i * np.ones([num_per_category], dtype=int)])
+            test_labels = np.concatenate([test_labels, i * np.ones([num_per_category], dtype=int)])
         i += 1
 
     return [train_seqs, valid_seqs, test_seqs,
@@ -215,33 +216,34 @@ def preprocess_data(raw_data, batch_size, random_scale_factor, augment_stroke_pr
         max_seq_length=max_seq_len)
     test_set.normalize_seq(seq_norm)
 
-    tf.logging.info('normalizing_scale_factor %4.4f.', seq_norm)
+    tf.compat.v1.logging.info('normalizing_scale_factor %4.4f.', seq_norm)
     return train_set, valid_set, test_set, max_seq_len
 
 
 def load_checkpoint(sess, checkpoint_path):
     """ Load checkpoint of saved model """
-    saver = tf.train.Saver(tf.global_variables())
+    saver = tf.compat.v1.train.Saver(tf.compat.v1.global_variables())
 
     ckpt = tf.train.get_checkpoint_state(checkpoint_path)
-    tf.logging.info('Loading model %s.', ckpt.model_checkpoint_path)
+    tf.compat.v1.logging.info('Loading model %s.', ckpt.model_checkpoint_path)
     print('Loading model %s.', ckpt.model_checkpoint_path)
     saver.restore(sess, ckpt.model_checkpoint_path)
 
 
 def save_model(sess, model_save_path, global_step):
     """ Save model """
-    saver = tf.train.Saver(tf.global_variables(), max_to_keep=10)
+    
+    saver = tf.compat.v1.train.Saver(tf.compat.v1.global_variables(), max_to_keep=10)
     
     checkpoint_path = os.path.join(model_save_path, 'vector')
-    tf.logging.info('saving model %s.', checkpoint_path)
-    tf.logging.info('global_step %i.', global_step)
-    saver.save(sess, checkpoint_path, global_step=global_step)
+    tf.compat.v1.logging.info('saving model %s.', checkpoint_path)
+    tf.compat.v1.logging.info('global_step %i.', global_step)
+    saver.save(sess, checkpoint_path, global_step=global_step,save_format='h5')
 
 
 def summ_content(tag, val):
     """ Construct summary content """
-    summ = tf.summary.Summary()
+    summ = tf.compat.v1.summary.Summary()
     summ.value.add(tag=tag, simple_value=float(val))
     return summ
 

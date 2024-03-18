@@ -36,7 +36,7 @@ import re
 
 def load_model_params(model_dir):
     model_params = utils.get_default_hparams()
-    with tf.gfile.Open(os.path.join(model_dir, 'model_config.json'), 'r') as f:
+    with tf.io.gfile.GFile(os.path.join(model_dir, 'model_config.json'), 'r') as f:
         model_config = json.dumps(json.load(f))
         model_params.parse_json(model_config)
     return model_params
@@ -70,14 +70,14 @@ def sort_paths(paths):
     return paths
 
 def main():
-    FLAGS = tf.app.flags.FLAGS
+    FLAGS = tf.compat.v1.app.flags.FLAGS
     # Checkpoint directory
-    tf.app.flags.DEFINE_string(
+    tf.compat.v1.app.flags.DEFINE_string(
         'model_dir', 'checkpoint',
         'Directory to store the model checkpoints.'
     )
     # Sample directory
-    tf.app.flags.DEFINE_string(
+    tf.compat.v1.app.flags.DEFINE_string(
         'output_dir', 'sample',
         'Directory to store the generated sketches.'
     )
@@ -113,13 +113,13 @@ def main():
 
     code_data = []
     for path in code:
-        code_data.append(np.load(path))
+        code_data.append(np.load(path),encoding='latin1', allow_pickle=True)
     code_data = np.reshape(code_data, [-1, model_params.z_size])  # Real codes for original sketches
 
     sample_size = len(code_data)  # Number of samples for retrieval
 
-    sess = tf.InteractiveSession(config=tf.ConfigProto(gpu_options=tf.GPUOptions(allow_growth=True)))
-    sess.run(tf.global_variables_initializer())
+    sess = tf.compat.v1.InteractiveSession(config=tf.compat.v1.ConfigProto(gpu_options=tf.compat.v1.GPUOptions(allow_growth=True)))
+    sess.run(tf.compat.v1.global_variables_initializer())
     utils.load_checkpoint(sess, model_dir)
 
     for i in range(len(img_data[:, 0, 0])):

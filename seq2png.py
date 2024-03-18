@@ -59,9 +59,9 @@ def load_dataset(data_dir, dataset):
   data_filepath = os.path.join(data_dir, dataset)
 
   if six.PY3:
-      data = np.load(data_filepath, encoding='latin1')
+      data = np.load(data_filepath,encoding='latin1', allow_pickle=True)
   else:
-      data = np.load(data_filepath)
+      data = np.load(data_filepath, allow_pickle=True)
 
   if train_strokes is None:
       train_strokes = data['train']
@@ -136,26 +136,27 @@ def sort_paths(paths):
     return paths
 
 def main():
-    FLAGS = tf.app.flags.FLAGS
+
+    FLAGS = tf.compat.v1.app.flags.FLAGS
 
     # Input sequential-formed dataset directory
-    tf.app.flags.DEFINE_string(
+    tf.compat.v1.app.flags.DEFINE_string(
         'input_dir',
         'dataset_path',
         'The directory in which to find the original dataset.'
     )
     # Output pixel-formed dataset directory
-    tf.app.flags.DEFINE_string(
+    tf.compat.v1.app.flags.DEFINE_string(
         'output_dir',
         'output_path',
         'The directory in which to output the translated dataset.'
     )
-    tf.app.flags.DEFINE_integer(
+    tf.compat.v1.app.flags.DEFINE_integer(
         'png_width', 48,
         'The width of the output pixel-formed sketch image.'
     )
     # Category to be translated
-    tf.app.flags.DEFINE_multi_string(
+    tf.compat.v1.app.flags.DEFINE_multi_string(
         'categories', {'cat','pig'},
         'The sketch category to be translated to the pixel form from the sequential form.'
     )
@@ -205,6 +206,7 @@ def main():
                 print('handled test %d' % i)
 
         # svg2png
+        print("next")
         png_path = os.path.join(out_path, 'png')
         if os.path.exists(png_path) is False:
             os.makedirs(png_path)
