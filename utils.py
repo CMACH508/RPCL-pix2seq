@@ -239,7 +239,7 @@ def save_model(sess, model_save_path, global_step):
     checkpoint_path = os.path.join(model_save_path, 'vector')
     tf.compat.v1.logging.info('saving model %s.', checkpoint_path)
     tf.compat.v1.logging.info('global_step %i.', global_step)
-    saver.save(sess, checkpoint_path, global_step=global_step,save_format='h5')
+    saver.save(sess, checkpoint_path, global_step=global_step)
 
 
 def summ_content(tag, val):

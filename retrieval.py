@@ -106,14 +106,15 @@ def main():
         im = np.array(Image.open(path).convert(mode='RGB'))
         im = im[:, :, 0] / 255. * 2. - 1.
         im = np.reshape(im, [1, 48, 48])
-        if img_data == []:
+        if len(img_data) == 0:
             img_data = im
         else:
             img_data = np.concatenate([img_data, im], axis=0)
 
     code_data = []
     for path in code:
-        code_data.append(np.load(path),encoding='latin1', allow_pickle=True)
+        data = np.load(path, encoding='latin1', allow_pickle=True)
+        code_data.append(data)
     code_data = np.reshape(code_data, [-1, model_params.z_size])  # Real codes for original sketches
 
     sample_size = len(code_data)  # Number of samples for retrieval
