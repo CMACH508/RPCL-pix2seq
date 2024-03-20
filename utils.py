@@ -29,7 +29,8 @@ import math
 import cv2
 import six
 from hparam import HParams
-
+tf.compat.v1.disable_v2_behavior()
+tf.compat.v1.disable_eager_execution()
 def get_default_hparams():
     """ Return default and initial HParams """
     hparams = HParams(

@@ -33,6 +33,7 @@ import scipy.misc
 import re
 from svg2png import exportsvg
 
+tf.compat.v1.disable_v2_behavior()
 def sample(sess, sample_model, z, gen_size=1, seq_len=250, temperature=0.24, greedy_mode=False):
     """ Sample a sequence of strokes """
 

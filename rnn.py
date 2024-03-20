@@ -21,9 +21,9 @@
 
 import numpy as np
 import tensorflow as tf
-import tensorflow_addons as tfa
-
-
+import tensorflow_addons as tfa 
+tf.compat.v1.disable_eager_execution()
+tf.compat.v1.disable_v2_behavior()
 def orthogonal(shape):
   """Orthogonal initilaizer."""
   flat_shape = (shape[0], np.prod(shape[1:]))
@@ -238,7 +238,7 @@ def super_linear(x,
     return tf.matmul(x, w)
 
 
-class LayerNormLSTMCell(tf.keras.layers.layer):
+class LayerNormLSTMCell(tf.keras.layers.LSTMCell):
   """Layer-Norm, with Ortho Init. and Recurrent Dropout without Memory Loss.
 
   https://arxiv.org/abs/1607.06450 - Layer Norm
@@ -262,6 +262,7 @@ class LayerNormLSTMCell(tf.keras.layers.layer):
     self.forget_bias = forget_bias
     self.use_recurrent_dropout = use_recurrent_dropout
     self.dropout_keep_prob = dropout_keep_prob
+    self._stateful = True
 
   @property
   def input_size(self):
@@ -315,7 +316,7 @@ class LayerNormLSTMCell(tf.keras.layers.layer):
     return new_h, tf.concat([new_h, new_c], 1)
 
 
-class HyperLSTMCell(tf.keras.layers.AbstractRNNCell):
+class HyperLSTMCell(tf.keras.layers.LSTMCell):
   """HyperLSTM with Ortho Init, Layer Norm, Recurrent Dropout, no Memory Loss.
 
   https://arxiv.org/abs/1609.09106
@@ -348,7 +349,8 @@ class HyperLSTMCell(tf.keras.layers.AbstractRNNCell):
         Controls whether HyperLSTM cell also uses recurrent dropout.
         Recommend turning this on only if hyper_num_units becomes large (>= 512)
     """
-    self._stateful = False
+    self._stateful = True
+    self.built = False
     self.num_units = num_units
     self.forget_bias = forget_bias
     self.use_recurrent_dropout = use_recurrent_dropout
@@ -427,6 +429,15 @@ class HyperLSTMCell(tf.keras.layers.AbstractRNNCell):
         result += beta
     return result
 
+  def build(self, input_shape):
+      self.kernel = self.add_weight(shape=(input_shape[-1], self.num_units * 4),
+                                      initializer='uniform',
+                                      name='kernel')
+      self.recurrent_kernel = self.add_weight(
+          shape=(self.num_units, self.num_units * 4),
+          initializer='uniform',
+          name='recurrent_kernel')
+      self.built = True
   def __call__(self, x, state, timestep=0, scope=None):
     with tf.compat.v1.variable_scope(scope or type(self).__name__):
       total_h, total_c = tf.split(state, 2, 1)

@@ -32,8 +32,8 @@ from model import Model
 from sample import sample
 import scipy.misc
 import re
-
-
+tf.compat.v1.disable_eager_execution()
+tf.compat.v1.disable_v2_behavior()
 def load_model_params(model_dir):
     model_params = utils.get_default_hparams()
     with tf.io.gfile.GFile(os.path.join(model_dir, 'model_config.json'), 'r') as f:

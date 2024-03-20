@@ -21,7 +21,8 @@
 
 import tensorflow as tf
 import tensorflow_addons as tfa
-
+tf.compat.v1.disable_eager_execution()
+tf.compat.v1.disable_v2_behavior()
 class DilatedConv(object):
     def __init__(self, specs, inputs, is_training, keep_prob=1.0):
         self.conv_layers = []

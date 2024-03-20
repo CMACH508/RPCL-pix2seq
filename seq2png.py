@@ -27,7 +27,8 @@ import glob
 from PIL import Image, ImageDraw
 import re
 import shutil
-
+tf.compat.v1.disable_v2_behavior()
+tf.compat.v1.disable_eager_execution()
 def get_bounds(data):
   """Return bounds of data."""
   min_x = 0

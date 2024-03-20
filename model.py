@@ -27,7 +27,8 @@ import numpy as np
 import tensorflow as tf
 import rnn
 import Cnn
-
+tf.compat.v1.disable_v2_behavior()
+tf.compat.v1.disable_eager_execution()
 class Model(object):
     def __init__(self, hps, reuse=tf.compat.v1.AUTO_REUSE):
         self.hps = hps
@@ -45,7 +46,6 @@ class Model(object):
                                          initializer=tf.compat.v1.ones_initializer(dtype=tf.float32), trainable=False,use_resource=False)
         self.de_alpha = tf.compat.v1.get_variable(name="latent_alpha", shape=[self.k, 1],
                                         initializer=tf.compat.v1.constant_initializer(1. / float(self.k), dtype=tf.float32), trainable=False,use_resource=False)
-        tf.compat.v1.disable_eager_execution()
         self.input_seqs = tf.compat.v1.placeholder(tf.float32, [self.hps.batch_size, self.hps.max_seq_len + 1, 5], name="input_seqs")
         self.input_pngs = tf.compat.v1.placeholder(tf.float32, [self.hps.batch_size, self.hps.png_width, self.hps.png_width], name="input_pngs")
         self.input_x = tf.identity(self.input_seqs[:, :self.hps.max_seq_len, :], name='input_x')
@@ -80,6 +80,10 @@ class Model(object):
 
         self.cell = cell
 
+    @property
+    def trainable_variables(self):
+        return []
+
     def build_RPCL_pix2seq(self):
         target = tf.reshape(self.output_x, [-1, 5])
         self.x1_data, self.x2_data, self.pen_data = tf.split(target, [1, 1, 3], axis=1)
@@ -112,24 +116,26 @@ class Model(object):
                       false_fn=lambda: self.em(self.p_mu, self.p_sigma2, self.p_alpha, self.de_mu, self.de_sigma2, self.de_alpha))
 
         # Loss function
+
         self.alpha_loss = self.get_alpha_loss(self.p_alpha, tf.stop_gradient(self.q_alpha))
         self.gaussian_loss = self.get_gaussian_loss(self.p_alpha, self.p_mu, self.p_sigma2, tf.stop_gradient(self.q_mu), tf.stop_gradient(self.q_sigma2))
         self.lil_loss = self.get_lil_loss(self.pi, self.mux, self.muy, self.sigmax, self.sigmay, self.corr,
-                                          self.pen_logits, self.x1_data, self.x2_data, self.pen_data)
+                                            self.pen_logits, self.x1_data, self.x2_data, self.pen_data)
         self.de_loss = self.calculate_deconv_loss(self.input_pngs, self.gen_img, 'square')
 
         self.kl_weight = 1. - 0.999 * (0.9999 ** self.global_)  # Warm up
-        self.loss = self.kl_weight * (self.alpha_loss + self.gaussian_loss) + self.lil_loss + self.hps.de_weight * self.de_loss
 
         self.lr = (self.hps.learning_rate - self.hps.min_learning_rate) * \
                   (self.hps.decay_rate ** (self.global_ / 3)) + self.hps.min_learning_rate
-        optimizer = tf.compat.v1.train.AdamOptimizer(self.lr, beta1=0.5)
-        gvs = optimizer.compute_gradients(self.loss)
+        optimizer = tf.keras.optimizers.Adam(self.lr, beta_1=0.5)
+        with tf.GradientTape() as tape:
+            self.loss = self.kl_weight * (self.alpha_loss + self.gaussian_loss) + self.lil_loss + self.hps.de_weight * self.de_loss
+
+        gvs = tape.gradient(self.loss, self.trainable_variables)
+        # gvs = optimizer.compute_gradients(self.loss)
         g = self.hps.grad_clip
-        for i, (grad, var) in enumerate(gvs):
-            if grad is not None:
-                gvs[i] = (tf.clip_by_value(grad, -g, g), var)
-        self.train_op = optimizer.apply_gradients(gvs)
+        clipped_gvs = [(tf.clip_by_value(grad, -g, g), var) for grad, var in gvs if grad is not None]
+        self.train_op = optimizer.apply_gradients(zip(clipped_gvs, self.trainable_variables))
 
         # Update the GMM parameters
         self.update_gmm_mu = tf.compat.v1.assign(self.de_mu, self.q_mu)
@@ -185,8 +191,14 @@ class Model(object):
         n_out = (3 + num_mixture * 6)
 
         with tf.compat.v1.variable_scope('decoder'):
-            rnn = tf.keras.layers.RNN(self.cell, return_sequences=True, return_state=True)
-            output, last_state = rnn(inputs)
+
+            output, last_state = tf.compat.v1.nn.dynamic_rnn(
+                self.cell,
+                inputs,
+                initial_state=initial_state,
+                time_major=False,
+                swap_memory=True,
+                dtype=tf.float32)
 
             output = tf.reshape(output, [-1, self.hps.dec_rnn_size])
             fc_spec = [('no', self.hps.dec_rnn_size, n_out, 'fc')]
