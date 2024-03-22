@@ -43,7 +43,7 @@ class Model(tf.keras.Model):
 
         # self.input_seqs = tf.compat.v1.placeholder(tf.float32, [self.hps.batch_size, self.hps.max_seq_len + 1, 5], name="input_seqs")
         # self.input_pngs = tf.compat.v1.placeholder(tf.float32, [self.hps.batch_size, self.hps.png_width, self.hps.png_width], name="input_pngs")
-        self.input_x = tf.identity(self.input_seqs[:, :self.hps.max_seq_len, :], name='input_x')
+        self.input_x = self.input_seqs[:, :self.hps.max_seq_len, :]
         self.output_x = self.input_seqs[:, 1:self.hps.max_seq_len + 1, :]
 
         # Decoder cell configuration
