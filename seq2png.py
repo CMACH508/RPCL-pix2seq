@@ -27,8 +27,8 @@ import glob
 from PIL import Image, ImageDraw
 import re
 import shutil
-tf.compat.v1.disable_v2_behavior()
-tf.compat.v1.disable_eager_execution()
+from absl import app, flags,logging
+
 def get_bounds(data):
   """Return bounds of data."""
   min_x = 0
@@ -136,28 +136,27 @@ def sort_paths(paths):
                 paths[j] = tmp
     return paths
 
-def main():
-
-    FLAGS = tf.compat.v1.app.flags.FLAGS
+def main(argv):
+    FLAGS = flags.FLAGS
 
     # Input sequential-formed dataset directory
-    tf.compat.v1.app.flags.DEFINE_string(
+    flags.DEFINE_string(
         'input_dir',
         'dataset_path',
         'The directory in which to find the original dataset.'
     )
     # Output pixel-formed dataset directory
-    tf.compat.v1.app.flags.DEFINE_string(
+    flags.DEFINE_string(
         'output_dir',
         'output_path',
         'The directory in which to output the translated dataset.'
     )
-    tf.compat.v1.app.flags.DEFINE_integer(
+    flags.DEFINE_integer(
         'png_width', 48,
         'The width of the output pixel-formed sketch image.'
     )
     # Category to be translated
-    tf.compat.v1.app.flags.DEFINE_multi_string(
+    flags.DEFINE_multi_string(
         'categories', {'cat','pig'},
         'The sketch category to be translated to the pixel form from the sequential form.'
     )
@@ -207,7 +206,7 @@ def main():
                 print('handled test %d' % i)
 
         # svg2png
-        print("next")
+        print("next step...")
         png_path = os.path.join(out_path, 'png')
         if os.path.exists(png_path) is False:
             os.makedirs(png_path)
@@ -238,4 +237,4 @@ def main():
         shutil.rmtree(out_path)
 
 if __name__ == "__main__":
-    main()
+    app.run(main)

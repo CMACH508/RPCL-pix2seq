@@ -23,13 +23,13 @@ import tensorflow as tf
 import rnn
 import Cnn
 class Model(tf.keras.Model):
-    def __init__(self, hps):
+    def __init__(self, hps,intput_seqs=None,input_pngs=None):
         super(Model, self).__init__()
         self.hps = hps
-        self.config_model()
+        self.config_model(input_seqs=None,input_pngs=None)
         self.build_RPCL_pix2seq()
 
-    def config_model(self):
+    def config_model(self,input_seqs,input_pngs):
         """ Model configuration """
         self.k = self.hps.num_mixture * self.hps.num_sub  # Gaussian number
         self.global_ = tf.Variable(tf.keras.initializers.Ones(shape=[],dtype=tf.float32), name='num_of_steps', trainable=False, use_resource=True)
@@ -41,10 +41,12 @@ class Model(tf.keras.Model):
         self.de_alpha = tf.Variable(tf.keras.initializers.Constant(value=1. / float(self.k), dtype=tf.float32)(shape = [self.k, 1]), name='latent_alpha', trainable=False, use_resource=True)
         # self.de_alpha = tf.compat.v1.get_variable(name="latent_alpha", shape=[self.k, 1],initializer=tf.compat.v1.constant_initializer(1. / float(self.k), dtype=tf.float32), trainable=False,use_resource=True)
 
+
+        # 输入数据
         # self.input_seqs = tf.compat.v1.placeholder(tf.float32, [self.hps.batch_size, self.hps.max_seq_len + 1, 5], name="input_seqs")
         # self.input_pngs = tf.compat.v1.placeholder(tf.float32, [self.hps.batch_size, self.hps.png_width, self.hps.png_width], name="input_pngs")
-        self.input_x = self.input_seqs[:, :self.hps.max_seq_len, :]
-        self.output_x = self.input_seqs[:, 1:self.hps.max_seq_len + 1, :]
+        # self.input_x = self.input_seqs[:, :self.hps.max_seq_len, :]
+        # self.output_x = self.input_seqs[:, 1:self.hps.max_seq_len + 1, :]
 
         # Decoder cell configuration
         if self.hps.dec_model == 'lstm':
@@ -74,11 +76,6 @@ class Model(tf.keras.Model):
             cell = tf.compat.v1.nn.rnn_cell.DropoutWrapper(cell, output_keep_prob=self.hps.output_dropout_prob)
 
         self.cell = cell
-
-
-    @property
-    def trainable_variables(self):
-        return [self.alpha_loss]
     
     @tf.function
     def compute_loss(self):
