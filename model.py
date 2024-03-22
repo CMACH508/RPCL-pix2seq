@@ -18,36 +18,31 @@
 #       [1] https://github.com/tensorflow/magenta/tree/master/magenta/models/sketch_rnn
 #
 """RPCL-pix2seq model structure file."""
-
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import numpy as np
 import tensorflow as tf
 import rnn
 import Cnn
-tf.compat.v1.disable_v2_behavior()
-tf.compat.v1.disable_eager_execution()
-class Model(object):
-    def __init__(self, hps, reuse=tf.compat.v1.AUTO_REUSE):
+class Model(tf.keras.Model):
+    def __init__(self, hps):
+        super(Model, self).__init__()
         self.hps = hps
-        with tf.compat.v1.variable_scope('RPCL-pix2seq', reuse=reuse):
-            self.config_model()
-            self.build_RPCL_pix2seq()
+        self.config_model()
+        self.build_RPCL_pix2seq()
 
     def config_model(self):
         """ Model configuration """
         self.k = self.hps.num_mixture * self.hps.num_sub  # Gaussian number
-        self.global_ = tf.compat.v1.get_variable(name='num_of_steps', shape=[], initializer=tf.compat.v1.ones_initializer(dtype=tf.float32), trainable=False,use_resource=True)
-        self.de_mu = tf.compat.v1.get_variable(name="latent_mu", shape=[self.k, self.hps.z_size],
-                                     initializer=tf.compat.v1.random_uniform_initializer(minval=-1., maxval=1., dtype=tf.float32), trainable=False,use_resource=True)
-        self.de_sigma2 = tf.compat.v1.get_variable(name="latent_sigma2", shape=[self.k, self.hps.z_size],
-                                         initializer=tf.compat.v1.ones_initializer(dtype=tf.float32), trainable=False,use_resource=True)
-        self.de_alpha = tf.compat.v1.get_variable(name="latent_alpha", shape=[self.k, 1],
-                                        initializer=tf.compat.v1.constant_initializer(1. / float(self.k), dtype=tf.float32), trainable=False,use_resource=True)
-        self.input_seqs = tf.compat.v1.placeholder(tf.float32, [self.hps.batch_size, self.hps.max_seq_len + 1, 5], name="input_seqs")
-        self.input_pngs = tf.compat.v1.placeholder(tf.float32, [self.hps.batch_size, self.hps.png_width, self.hps.png_width], name="input_pngs")
+        self.global_ = tf.Variable(tf.keras.initializers.Ones(shape=[],dtype=tf.float32), name='num_of_steps', trainable=False, use_resource=True)
+        # self.global_ = tf.compat.v1.get_variable(name='num_of_steps', shape=[], initializer=tf.compat.v1.ones_initializer(dtype=tf.float32), trainable=False,use_resource=True)
+        self.de_mu = tf.Variable(tf.keras.initializers.RandomUniform(minval=-1., maxval=1., dtype=tf.float32)(shape = [self.k, self.hps.z_size]), name='latent_mu', trainable=False, use_resource=True)
+        # self.de_mu = tf.compat.v1.get_variable(name="latent_mu", shape=[self.k, self.hps.z_size],initializer=tf.compat.v1.random_uniform_initializer(minval=-1., maxval=1., dtype=tf.float32), trainable=False,use_resource=True)
+        self.de_sigma2 = tf.Variable(tf.keras.initializers.Ones(dtype=tf.float32)(shape = [self.k, self.hps.z_size]), name='latent_sigma2', trainable=False, use_resource=True)
+        # self.de_sigma2 = tf.compat.v1.get_variable(name="latent_sigma2", shape=[self.k, self.hps.z_size],initializer=tf.compat.v1.ones_initializer(dtype=tf.float32), trainable=False,use_resource=True)
+        self.de_alpha = tf.Variable(tf.keras.initializers.Constant(value=1. / float(self.k), dtype=tf.float32)(shape = [self.k, 1]), name='latent_alpha', trainable=False, use_resource=True)
+        # self.de_alpha = tf.compat.v1.get_variable(name="latent_alpha", shape=[self.k, 1],initializer=tf.compat.v1.constant_initializer(1. / float(self.k), dtype=tf.float32), trainable=False,use_resource=True)
+
+        # self.input_seqs = tf.compat.v1.placeholder(tf.float32, [self.hps.batch_size, self.hps.max_seq_len + 1, 5], name="input_seqs")
+        # self.input_pngs = tf.compat.v1.placeholder(tf.float32, [self.hps.batch_size, self.hps.png_width, self.hps.png_width], name="input_pngs")
         self.input_x = tf.identity(self.input_seqs[:, :self.hps.max_seq_len, :], name='input_x')
         self.output_x = self.input_seqs[:, 1:self.hps.max_seq_len + 1, :]
 

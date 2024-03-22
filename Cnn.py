@@ -21,7 +21,6 @@
 
 import tensorflow as tf
 import tensorflow_addons as tfa
-from keras_contrib.layers.normalization.instancenormalization import InstanceNormalization
 tf.compat.v1.disable_eager_execution()
 tf.compat.v1.disable_v2_behavior()
 
