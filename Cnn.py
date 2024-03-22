@@ -21,8 +21,10 @@
 
 import tensorflow as tf
 import tensorflow_addons as tfa
+from keras_contrib.layers.normalization.instancenormalization import InstanceNormalization
 tf.compat.v1.disable_eager_execution()
 tf.compat.v1.disable_v2_behavior()
+
 class DilatedConv(object):
     def __init__(self, specs, inputs, is_training, keep_prob=1.0):
         self.conv_layers = []
@@ -40,7 +42,7 @@ class DilatedConv(object):
         return tf.random.normal(shape=size, stddev=xavier_stddev)
 
     def get_filter(self, name, shape):
-        return tf.compat.v1.get_variable(name, dtype=tf.float32, initializer=self.xavier_init(shape),use_resource=False)
+        return tf.compat.v1.get_variable(name, dtype=tf.float32, initializer=self.xavier_init(shape),use_resource=True)
 
     def select_act_func(self, actfun):
         if actfun == 'tanh':
@@ -56,14 +58,8 @@ class DilatedConv(object):
         batch_size, height, width, in_channel = inputs.get_shape().as_list()
         w = self.get_filter('filter', [w_size[0], w_size[1], in_channel, out_channel])
         f = self.select_act_func(actfun)
-        conv = tf.nn.conv2d(input=inputs, filters=w,strides=[1, 1, 1, 1], padding='SAME', dilations=[1, rate, rate, 1])
-        # 在原始的TensorFlow 1.x版本中，tf.nn.atrous_conv2d操作中，步数默认为1，而膨胀率由rate参数直接定义，所以在直接调用时没有显示出来。而在TensorFlow 2.x的tf.nn.conv2d操作中，步数和膨胀率需要分别用strides和dilations参数来明确给出。
-
-        instance_norm_layer = tfa.layers.InstanceNormalization()
-        conv = instance_norm_layer(conv)
-        # 实例归一化在tf.contrib.layers模块下，但是在TensorFlow 2.0版本中，tf.contrib模块已经被移除了。作为替代，实例归一化的功能已经迁移到了TensorFlow Addons，相应的函数为tfa.layers.InstanceNormalization
-        # conv = tf.nn.atrous_conv2d(inputs, w, rate=rate, padding='SAME')
-        # conv = tf.contrib.layers.instance_norm(conv)
+        conv = tf.compat.v1.nn.atrous_conv2d(inputs, w, rate=rate, padding='SAME')
+        InstanceNormalization()(conv)
         out = f(conv)
         return out
 
@@ -88,7 +84,7 @@ class ConvNet(object):
         return tf.random.normal(shape=size, stddev=xavier_stddev)
 
     def get_filter(self, name, shape):
-        return tf.compat.v1.get_variable(name, dtype=tf.float32, initializer=self.xavier_init(shape),use_resource=False)
+        return tf.compat.v1.get_variable(name, dtype=tf.float32, initializer=self.xavier_init(shape),use_resource=True)
 
     def select_act_func(self, actfun):
         if actfun == 'tanh':
@@ -104,10 +100,8 @@ class ConvNet(object):
         batch_size, height, width, in_channel = inputs.get_shape().as_list()
         w = self.get_filter('filter', [w_size[0], w_size[1], in_channel, out_channel])
         f = self.select_act_func(actfun)
-        conv = tf.nn.conv2d(input=inputs, filters=w, strides=strides, padding='SAME')
-        instance_norm_layer = tfa.layers.InstanceNormalization()
-        conv = instance_norm_layer(conv)
-        # conv = tf.contrib.layers.instance_norm(conv)
+        conv = tf.nn.conv2d(inputs, w, strides=strides, padding='SAME')
+        InstanceNormalization()(conv)
         out = f(conv)
         return out
 
@@ -120,8 +114,7 @@ class ConvNet(object):
             deconv_shape = [batch_size, height * 2, width * 2, out_channel]
         f = self.select_act_func(actfun)
         conv = tf.nn.conv2d_transpose(inputs, w, deconv_shape, strides=strides, padding='SAME')
-        instance_norm_layer = tfa.layers.InstanceNormalization()
-        conv = instance_norm_layer(conv)
+        InstanceNormalization()(conv)
         out = f(conv)
         return out
 
@@ -152,9 +145,9 @@ class FcNet(object):
 
     def build_fc_layer(self, x, input_size, output_size, actfun, scope=None, use_bias=True):
         with tf.compat.v1.variable_scope(scope or 'linear'):
-            w = tf.compat.v1.get_variable(name='fc_w', dtype=tf.float32, initializer=self.xavier_init([input_size, output_size]),use_resource=False)
+            w = tf.compat.v1.get_variable(name='fc_w', dtype=tf.float32, initializer=self.xavier_init([input_size, output_size]),use_resource=True)
             if use_bias:
-                b = tf.compat.v1.get_variable('fc_b', [output_size], tf.float32, initializer=tf.compat.v1.constant_initializer(0.0),use_resource=False)
+                b = tf.compat.v1.get_variable('fc_b', [output_size], tf.float32, initializer=tf.compat.v1.constant_initializer(0.0),use_resource=True)
                 temp = tf.matmul(x, w) + b
             else:
                 temp = tf.matmul(x, w)

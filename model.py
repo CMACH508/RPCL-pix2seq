@@ -39,13 +39,13 @@ class Model(object):
     def config_model(self):
         """ Model configuration """
         self.k = self.hps.num_mixture * self.hps.num_sub  # Gaussian number
-        self.global_ = tf.compat.v1.get_variable(name='num_of_steps', shape=[], initializer=tf.compat.v1.ones_initializer(dtype=tf.float32), trainable=False,use_resource=False)
+        self.global_ = tf.compat.v1.get_variable(name='num_of_steps', shape=[], initializer=tf.compat.v1.ones_initializer(dtype=tf.float32), trainable=False,use_resource=True)
         self.de_mu = tf.compat.v1.get_variable(name="latent_mu", shape=[self.k, self.hps.z_size],
-                                     initializer=tf.compat.v1.random_uniform_initializer(minval=-1., maxval=1., dtype=tf.float32), trainable=False,use_resource=False)
+                                     initializer=tf.compat.v1.random_uniform_initializer(minval=-1., maxval=1., dtype=tf.float32), trainable=False,use_resource=True)
         self.de_sigma2 = tf.compat.v1.get_variable(name="latent_sigma2", shape=[self.k, self.hps.z_size],
-                                         initializer=tf.compat.v1.ones_initializer(dtype=tf.float32), trainable=False,use_resource=False)
+                                         initializer=tf.compat.v1.ones_initializer(dtype=tf.float32), trainable=False,use_resource=True)
         self.de_alpha = tf.compat.v1.get_variable(name="latent_alpha", shape=[self.k, 1],
-                                        initializer=tf.compat.v1.constant_initializer(1. / float(self.k), dtype=tf.float32), trainable=False,use_resource=False)
+                                        initializer=tf.compat.v1.constant_initializer(1. / float(self.k), dtype=tf.float32), trainable=False,use_resource=True)
         self.input_seqs = tf.compat.v1.placeholder(tf.float32, [self.hps.batch_size, self.hps.max_seq_len + 1, 5], name="input_seqs")
         self.input_pngs = tf.compat.v1.placeholder(tf.float32, [self.hps.batch_size, self.hps.png_width, self.hps.png_width], name="input_pngs")
         self.input_x = tf.identity(self.input_seqs[:, :self.hps.max_seq_len, :], name='input_x')
@@ -80,9 +80,16 @@ class Model(object):
 
         self.cell = cell
 
+
     @property
     def trainable_variables(self):
-        return []
+        return [self.alpha_loss]
+    
+    @tf.function
+    def compute_loss(self):
+        self.kl_weight = 1. - 0.999 * (0.9999 ** self.global_)  # Warm up
+        self.loss = self.lil_loss + self.hps.de_weight * self.de_loss + self.kl_weight * (self.alpha_loss + self.gaussian_loss) 
+        return self.loss
 
     def build_RPCL_pix2seq(self):
         target = tf.reshape(self.output_x, [-1, 5])
@@ -116,26 +123,26 @@ class Model(object):
                       false_fn=lambda: self.em(self.p_mu, self.p_sigma2, self.p_alpha, self.de_mu, self.de_sigma2, self.de_alpha))
 
         # Loss function
-
         self.alpha_loss = self.get_alpha_loss(self.p_alpha, tf.stop_gradient(self.q_alpha))
         self.gaussian_loss = self.get_gaussian_loss(self.p_alpha, self.p_mu, self.p_sigma2, tf.stop_gradient(self.q_mu), tf.stop_gradient(self.q_sigma2))
         self.lil_loss = self.get_lil_loss(self.pi, self.mux, self.muy, self.sigmax, self.sigmay, self.corr,
                                             self.pen_logits, self.x1_data, self.x2_data, self.pen_data)
         self.de_loss = self.calculate_deconv_loss(self.input_pngs, self.gen_img, 'square')
 
-        self.kl_weight = 1. - 0.999 * (0.9999 ** self.global_)  # Warm up
-
         self.lr = (self.hps.learning_rate - self.hps.min_learning_rate) * \
                   (self.hps.decay_rate ** (self.global_ / 3)) + self.hps.min_learning_rate
-        optimizer = tf.keras.optimizers.Adam(self.lr, beta_1=0.5)
-        with tf.GradientTape() as tape:
-            self.loss = self.kl_weight * (self.alpha_loss + self.gaussian_loss) + self.lil_loss + self.hps.de_weight * self.de_loss
 
-        gvs = tape.gradient(self.loss, self.trainable_variables)
-        # gvs = optimizer.compute_gradients(self.loss)
+        optimizer = tf.keras.optimizers.Adam(self.lr, beta_1=0.5)
         g = self.hps.grad_clip
-        clipped_gvs = [(tf.clip_by_value(grad, -g, g), var) for grad, var in gvs if grad is not None]
-        self.train_op = optimizer.apply_gradients(zip(clipped_gvs, self.trainable_variables))
+
+        with tf.GradientTape() as tape:
+            tape.watch(self.trainable_variables)
+            loss = self.compute_loss()  # replace with your loss computation
+
+        
+        gradients = tape.gradient(loss, self.trainable_variables)
+        clipped_gradients, _ = tf.clip_by_global_norm(gradients, g)
+        self.train_op = optimizer.apply_gradients(zip(clipped_gradients, self.trainable_variables))
 
         # Update the GMM parameters
         self.update_gmm_mu = tf.compat.v1.assign(self.de_mu, self.q_mu)
@@ -305,7 +312,8 @@ class Model(object):
     def get_alpha_loss(self, p_alpha, q_alpha):
         p_alpha = tf.reshape(p_alpha, [self.hps.batch_size, self.k])
         q_alpha = tf.tile(tf.reshape(q_alpha, [1, self.k]), [self.hps.batch_size, 1])
-        return tf.reduce_sum(input_tensor=tf.reduce_mean(input_tensor=p_alpha * tf.math.log(tf.compat.v1.div(p_alpha, q_alpha + 1e-10) + 1e-10), axis=0))
+
+        return tf.reduce_sum(input_tensor=tf.reduce_mean(input_tensor=p_alpha * tf.math.log(tf.divide(p_alpha, q_alpha + 1e-10) + 1e-10), axis=0))
 
     def get_gaussian_loss(self, p_alpha, p_mu, p_sigma2, q_mu, q_sigma2):
         p_alpha = tf.reshape(p_alpha, [self.hps.batch_size, self.k])
@@ -313,6 +321,7 @@ class Model(object):
         p_sigma2 = tf.tile(tf.reshape(p_sigma2, [self.hps.batch_size, 1, self.hps.z_size]), [1, self.k, 1])
         q_mu = tf.tile(tf.reshape(q_mu, [1, self.k, self.hps.z_size]), [self.hps.batch_size, 1, 1])
         q_sigma2 = tf.tile(tf.reshape(q_sigma2, [1, self.k, self.hps.z_size]), [self.hps.batch_size, 1, 1])
+
         return tf.reduce_mean(input_tensor=tf.reduce_sum(input_tensor=0.5 * tf.multiply(p_alpha, tf.reduce_sum(
             input_tensor=tf.math.log(q_sigma2 + 1e-10) + tf.compat.v1.div(p_sigma2 + (p_mu - q_mu) ** 2, q_sigma2 + 1e-10) - 1.0 - tf.math.log(
                 p_sigma2 + 1e-10), axis=2)), axis=1))

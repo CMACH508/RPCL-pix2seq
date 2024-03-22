@@ -39,9 +39,8 @@ import matplotlib.pyplot as plt
 from hparam import HParams
 
 plt.switch_backend('agg')
-
-tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.INFO)
 tf.compat.v1.disable_v2_behavior()
+tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.INFO)
 tf.compat.v1.disable_eager_execution()
 FLAGS = tf.compat.v1.app.flags.FLAGS
 
@@ -76,12 +75,12 @@ def get_default_hparams():
         categories=['bee', 'bus', 'flower', 'giraffe', 'pig'],  # Sketch categories
         num_steps=1000001,  # Number of total steps (the process will stop automatically if the loss is not improved)
         save_every=1,  # Number of epochs before saving model
-        dec_rnn_size=2048,  # Size of decoder
-        dec_model='hyper',  # Decoder: lstm, layer_norm or hyper
+        dec_rnn_size=1024,  # Size of decoder
+        dec_model='lstm',  # Decoder: lstm, layer_norm or hyper
         max_seq_len=-1,  # Max sequence length. Computed by DataLoader
         z_size=128,  # Size of latent variable
         batch_size=200,  # Minibatch size
-        num_mixture=5,  # Recommend to set to the number of categories
+        num_mixture=2,  # Recommend to set to the number of categories
         learning_rate=0.001,  # Learning rate
         decay_rate=0.9999,  # Learning rate decay per minibatch.
         min_learning_rate=0.00001,  # Minimum learning rate
@@ -162,7 +161,6 @@ def _train(sess, model, train_set, epoch, sum):
                       model.update_gmm_mu, model.update_gmm_sigma2, model.update_gmm_alpha], feed)
         count += 1
         sum += 1
-
         # Record the value of losses
         if count % 20 == 0:
             end = time.time()
@@ -223,6 +221,7 @@ def prepare(model_params):
     sess.run(tf.compat.v1.global_variables_initializer())
     
     # Load checkpoint if resume training
+    # print(FLAGS.log_root)
     if FLAGS.resume_training:
         sess, epoch, count, best_valid_cost = load_checkpoint(sess, FLAGS.log_root)
     else:
@@ -250,11 +249,9 @@ def train_model(model_params):
     """ Main branch for RPCLVQ """
     np.set_printoptions(precision=8, edgeitems=6, linewidth=200, suppress=True)
     sess, model, eval_model, train_set, valid_set, test_set, best_valid_cost, epoch, count = prepare(model_params)
-    
     cnt = 0  # Number of invalid training epoch
     for _ in range(100000):
-        epoch, count = _train(sess, model, train_set, epoch, count)
-
+        epoch, count = _train(sess, model, train_set, epoch, count) # Training process
         if (epoch % model_params.save_every) == 0:
             print('Best_valid_loss: %4.4f' % best_valid_cost)
             valid_cost = _validate(sess, eval_model, valid_set)
